@@ -1,0 +1,13 @@
+[Unit]
+Description=ns3 network simulator service
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+WorkingDirectory={{ deployFolder }}/{{ nsVersion }}/{{ nsCodeFolder }}
+Type=simple
+User=root
+ExecStart={{ deployFolder }}/{{ nsVersion }}/{{ nsCodeFolder }}/launch_ns3.sh
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,358 @@
+---
+     - name: upgrade system
+       tags: 
+           - install  
+       become: yes
+       apt:
+           upgrade: yes
+     
+     - name: Update repositories cache and install package required to build
+       tags:
+            - install    
+       become: yes
+       apt:
+            name: "{{ item }}"
+       with_items:
+             - gcc
+             - g++
+             - autoconf
+             - bzr
+             - python-dev    
+                 
+     - name: Add universe repository
+       tags:
+             - install
+       become: yes
+       apt_repository:
+            repo: deb http://archive.ubuntu.com/ubuntu/ {{ansible_distribution_release}} universe
+     
+     - name: Install insterfaces tools
+       tags:
+             - install
+       become: yes
+       apt:
+            name: "{{ item }}"
+       with_items:
+             - bridge-utils
+             - uml-utilities
+
+     - name: Add Docker GPG key
+       tags:
+             - install
+       become: yes
+       apt_key: url=https://download.docker.com/linux/ubuntu/gpg
+
+     - name: Add Docker APT repository
+       tags:
+             - install
+       become: yes
+       apt_repository:
+          repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ansible_distribution_release}} stable
+
+     - name: Install list of packages
+       tags:
+            - install  
+       become: yes
+       apt:
+           name: "{{ item }}"
+           state: present
+           update_cache: yes
+       with_items:
+            - apt-transport-https
+            - ca-certificates
+            - curl
+            - software-properties-common
+            - docker-ce
+            - python3-docker 
+            - bridge-utils 
+            - libnm-glib-dev 
+            - python-gi  
+       
+     - name: create docker group
+       tags:
+          - install     
+       become: yes
+       group:
+           name: docker
+
+     - name: add user dockemu to group docker
+       tags:
+          - install     
+       become: yes   
+       user:
+           name: dockemu
+           group: docker
+
+     - name: Remove useless packages from the cache
+       tags:
+           - install    
+       become: yes
+       apt:
+          autoclean: yes
+
+     - name: Remove dependencies that are no longer required
+       tags:
+           - install      
+       become: yes
+       apt:
+          autoremove: yes
+          
+     - name: Creates directory
+       tags:
+           - install     
+       file:
+          path: "{{deployFolder}}"
+          state: directory
+          
+     - name: Download ns-3 allinone
+       tags:
+           - install     
+       get_url:
+          url: "https://www.nsnam.org/release/{{nsVersion}}{{extension}}"
+          dest: "{{deployFolder}}/{{nsVersion}}{{extension}}"
+          
+     - name: Extract allinone bz2 in home dir
+       tags:
+           - install    
+       unarchive:
+          src:  "{{deployFolder}}/{{nsVersion}}{{extension}}"
+          dest: "{{deployFolder}}"
+          remote_src: yes 
+
+     - name: ns3 waf configure
+       tags:
+           - install     
+       command: ./waf -d optimized configure
+       args:
+           chdir: "{{deployFolder}}/{{nsVersion}}/{{nsCodeFolder}}"
+       when: optimized
+
+     - name: ns3 waf configure
+       tags:
+           - install     
+       command: ./waf configure --disable-examples --disable-tests --disable-python --enable-static --no-task-lines
+       args:
+           chdir: "{{deployFolder}}/{{nsVersion}}/{{nsCodeFolder}}"
+       when: not optimized
+
+     - name: execute ./waf to build ns3
+       tags:
+           - install    
+       command: ./waf  
+       args:
+           chdir: "{{deployFolder}}/{{nsVersion}}/{{nsCodeFolder}}"
+
+      # This is done temporary this way, when possible this will be done from git
+     - name: extract Dockemu files
+       tags:
+           - install     
+       unarchive:      
+          src: NS3DockerEmulator.tgz
+          dest: "{{deployFolder}}/"        
+      
+     - name: Build an image and leave it in internal respository
+       tags:
+             - prepare  
+             - execute  
+       docker_image:
+           path: "{{ deployFolder }}/NS3DockerEmulator/docker/minimal"
+           name: "{{ baseContainerName }}"
+   
+     - name: Creates log directories for each client node
+       tags:
+             - prepare
+             - execute
+       file:
+            path: "{{ deployFolder }}/{{ experimentName }}/logs/client-container-{{ item }}"
+            state: directory
+       with_sequence: "start=0 count={{ numberOfClientNodes }}"
+
+     - name: Creates log directories for each server node
+       tags:
+             - prepare
+             - execute
+       file:
+           path: "{{ deployFolder }}/{{ experimentName }}/logs/server-container-{{ item }}"
+           state: directory
+       with_sequence: "start=0 count={{ numberOfServerNodes }}"
+
+        #- name: run client docker containers
+        #docker_container:
+        #     name: "{{ baseContainerName }}_{{ item }}"
+        #     image: "{{ baseContainerName }}"
+        #     detach: yes
+        #     interactive: yes 
+        #     purge_networks: yes
+        #     tty: yes 
+        #     volumes: 
+        #             - "{{ deployFolder }}/{{ experimentName }}/logs/client-container-{{ item }}:/var/log/golang"
+        #             - "{{ confFile }}:/beacon_conf" 
+                       #command: "--sysctl net.ipv6.conf.all.disable_ipv6=0"
+                       #     privileged: yes   
+        #with_sequence: "start=0 count={{ numberOfClientNodes }}"   
+ 
+     - name: create tap client interfaces 
+       tags:
+             - prepare
+             - execute 
+             - networking  
+       command:  "tunctl -t tap-client-{{ item }}"
+       become: yes
+       with_sequence: "start=0 count={{ numberOfClientNodes }}"
+       
+     - name: create bridge client interfaces
+       tags:
+             - prepare
+             - execute
+             - networking  
+       command:  "brctl addbr br-client-{{ item }}"  
+       become: yes
+       with_sequence: "start=0 count={{ numberOfClientNodes }}"
+
+     - name: set tap interfaces up
+       command:   "ifconfig tap-client-{{ item }} 0.0.0.0 promisc up"
+       tags:
+             - prepare
+             - execute
+             - networking  
+       become: yes
+       with_sequence: "start=0 count={{ numberOfClientNodes }}"
+
+     - name: set bridge interfaces up
+       tags:
+             - prepare
+             - execute 
+             - networking  
+       command:   "ifconfig br-client-{{ item }} up"  
+       become: yes
+       with_sequence: "start=0 count={{ numberOfClientNodes }}"
+        
+     - name: Copy NS3 configuration file
+       tags:
+             - prepare  
+             - execute
+       copy: "src=files/{{ ns3NetworkScript }}.cc dest={{ deployFolder }}/{{ nsVersion }}/{{ nsCodeFolder }}/scratch"
+
+       # I didn't manage to get NS3 running directly from systemd script, this scriptis just used from systemd  
+     - name: create launch NS3 script
+       tags: 
+             - prepare
+             - execute  
+       template:
+           src: templates/launch_ns3.j2
+           dest: "{{ deployFolder }}/{{ nsVersion }}/{{ nsCodeFolder }}/launch_ns3.sh"
+           owner: dockemu
+           #group: dockemu
+           mode: 0755
+    
+     - name: create init script to systemd
+       tags:
+             - prepare
+             - execute
+       become: yes
+       template: 
+           src: templates/ns3.service.j2
+           dest: /etc/systemd/system/ns3.service
+           mode: 0755 
+
+     - name: Execute NS3 simulator
+       tags:
+             - prepare  
+             - execute  
+        # this is only for mobility scenarios
+        # "--SizeX={3} --SizeY={3} --MobilitySpeed={4} --MobilityPause={5}"
+       become: yes
+       systemd:
+               state: started
+               daemon_reload: yes
+               name: ns3  
+
+     - name: run client docker containers
+       tags:
+             - prepare  
+             - execute  
+       docker_container:
+            name: "{{ baseContainerName }}_{{ item }}"
+            image: "{{ baseContainerName }}"
+            detach: yes
+            interactive: yes
+            purge_networks: yes
+            tty: yes
+            volumes:
+                 - "{{ deployFolder }}/{{ experimentName }}/logs/client-container-{{ item }}:/var/log/golang"
+                 - "{{ confFile }}:/beacon_conf"
+            privileged: yes
+       with_sequence: "start=0 count={{ numberOfClientNodes }}"
+
+     - name: gather list of containers
+       tags:
+             - prepare
+             - execute  
+       shell: "docker ps | awk '/{{ item }}/{print $1}'"
+       register: list_of_containers
+       with_items:
+             - "{{ baseContainerName }}"
+
+     - debug:
+             msg: "container: {{ item.stdout_lines }}"
+       tags:
+             - execute
+       with_items:
+             #- "{{ list_of_containers.results|map(attribute='stdout_lines')|list }}"
+             - "{{ list_of_containers.results }}"   
+     - debug:
+            var: list_of_containers    
+       tags:
+             - execute   
+     - name: split stdout_lines into variable
+       tags:
+             - execute  
+       set_fact: 
+             blockdevices1: "{{list_of_containers.results|map(attribute='stdout')|list}}"
+     
+     - debug:
+             msg: "blockdevices1: {{ item }}"         
+       tags: 
+            - execute
+       with_items: "{{blockdevices1}}"       
+
+     - name: split stdout_lines into variable
+       tags:
+             - execute
+       set_fact:
+             blockdevices2: "{{blockdevices1[0].split('\n')}}"        
+
+     - debug:
+             msg: "KONA: {{ item }}"
+       with_items: "{{ blockdevices2 }}"
+       tags:
+             - execute       
+
+
+     - debug:
+            msg: "container2: {{ item }}"
+       tags:
+             - execute
+       loop: "{{ blockdevices2 }}"
+
+
+     - name: get PID from containers
+       tags:
+             - prepare
+             - execute  
+       shell:  "docker inspect --format '{''{ .State.Pid }''}' {{ item }}"
+       register: list_pids       
+       with_items:
+             - "{{ blockdevices2 }}"     
+
+
+               #- name : get container IP
+               #shell: docker inspect --format '{''{ .NetworkSettings.IPAddress }''}' container_ID
+               #register : container_IP
+
+
+       #- name: build client docker containers
+        #docker_container:
+            #name: "{{baseContainerName}}"
+            #image: "{{deployFolder}}/NS3DockerEmulator/docker/minimal" 
+            #    detach: yes 
