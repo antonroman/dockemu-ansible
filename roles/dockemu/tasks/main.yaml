@@ -175,22 +175,7 @@
            path: "{{ deployFolder }}/{{ experimentName }}/logs/server-container-{{ item }}"
            state: directory
        with_sequence: "start=0 count={{ numberOfServerNodes }}"
-
-        #- name: run client docker containers
-        #docker_container:
-        #     name: "{{ baseContainerName }}_{{ item }}"
-        #     image: "{{ baseContainerName }}"
-        #     detach: yes
-        #     interactive: yes 
-        #     purge_networks: yes
-        #     tty: yes 
-        #     volumes: 
-        #             - "{{ deployFolder }}/{{ experimentName }}/logs/client-container-{{ item }}:/var/log/golang"
-        #             - "{{ confFile }}:/beacon_conf" 
-                       #command: "--sysctl net.ipv6.conf.all.disable_ipv6=0"
-                       #     privileged: yes   
-        #with_sequence: "start=0 count={{ numberOfClientNodes }}"   
- 
+     
      - name: create tap client interfaces 
        tags:
              - prepare
@@ -289,51 +274,21 @@
              - prepare
              - execute  
        shell: "docker ps | awk '/{{ item }}/{print $1}'"
-       register: list_of_containers
+       register: output_list_of_containers
        with_items:
              - "{{ baseContainerName }}"
-
-     - debug:
-             msg: "container: {{ item.stdout_lines }}"
-       tags:
-             - execute
-       with_items:
-             #- "{{ list_of_containers.results|map(attribute='stdout_lines')|list }}"
-             - "{{ list_of_containers.results }}"   
-     - debug:
-            var: list_of_containers    
-       tags:
-             - execute   
-     - name: split stdout_lines into variable
+     
+     - name: get list of lines in a single string in the first element of the string
        tags:
              - execute  
        set_fact: 
-             blockdevices1: "{{list_of_containers.results|map(attribute='stdout')|list}}"
-     
-     - debug:
-             msg: "blockdevices1: {{ item }}"         
-       tags: 
-            - execute
-       with_items: "{{blockdevices1}}"       
+             string_list_of_containers: "{{output_list_of_containers.results|map(attribute='stdout')|list}}"
 
-     - name: split stdout_lines into variable
+     - name: convert list with pids into list to be used later in with_items
        tags:
              - execute
        set_fact:
-             blockdevices2: "{{blockdevices1[0].split('\n')}}"        
-
-     - debug:
-             msg: "KONA: {{ item }}"
-       with_items: "{{ blockdevices2 }}"
-       tags:
-             - execute       
-
-
-     - debug:
-            msg: "container2: {{ item }}"
-       tags:
-             - execute
-       loop: "{{ blockdevices2 }}"
+             list_of_containers: "{{string_list_of_containers[0].split('\n')}}"        
 
 
      - name: get PID from containers
@@ -341,18 +296,25 @@
              - prepare
              - execute  
        shell:  "docker inspect --format '{''{ .State.Pid }''}' {{ item }}"
-       register: list_pids       
+       register: list_container_pids       
        with_items:
-             - "{{ blockdevices2 }}"     
+             - "{{ list_of_containers }}"     
 
 
-               #- name : get container IP
-               #shell: docker inspect --format '{''{ .NetworkSettings.IPAddress }''}' container_ID
-               #register : container_IP
+      # This is not working yet as at this point it seems the contaniner has not assigned IP¿?        
+     - name : get container IPs
+       tags:
+             - prepare  
+             - execute  
+       shell: "docker inspect --format '{''{ .NetworkSettings.IPAddress }''}' {{ item }}"
+       register : list_container_IPs
+       with_items:
+             - "{{ list_of_containers }}"
 
+     - debug:
+          msg: "{{ item }}"
+       with_items: 
+         - "{{list_container_IPs}}"
+       tags:
+             - execute    
 
-       #- name: build client docker containers
-        #docker_container:
-            #name: "{{baseContainerName}}"
-            #image: "{{deployFolder}}/NS3DockerEmulator/docker/minimal" 
-            #    detach: yes 
