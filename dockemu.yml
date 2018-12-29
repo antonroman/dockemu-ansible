@@ -1,0 +1,7 @@
+---
+- name: Launch Dockemu simulation
+  hosts: dockemu
+
+
+  roles:
+    - dockemu

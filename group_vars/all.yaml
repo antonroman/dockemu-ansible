@@ -1,0 +1,26 @@
+---
+     # deployment setup    
+    nsVersion: ns-allinone-3.29
+    nsCodeFolder: ns-3.29
+    extension: .tar.bz2
+    deployFolder: /home/dockemu/src/dockemu
+    optimized: false
+    # ANTON cambia isto kona! 
+    confFile: /home/dockemu/src/dockemu/NS3DockerEmulator/conf
+
+      # experiment configuration  
+    baseContainerName: coapcontainer
+    experimentName: golang-nodes
+    logsDirectory: /var/dockemu/logs/
+    numberOfClientNodes: 5
+    numberOfServerNodes: 1
+    serverNode: True
+    emulationTime: 300
+    ns3NetworkScript: tap-wifi-virtual-machine
+    nodeSpeed: 5
+    nodePause: 1
+
+    
+      # emulation parameters  
+    startns3: False
+    ns3Jobs: 1
