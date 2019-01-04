@@ -1,0 +1,115 @@
+---
+     - name: upgrade system
+       tags: 
+           - install  
+       become: yes
+       apt:
+           upgrade: yes
+     
+     - name: Update repositories cache and install package required to build 
+       become: yes
+       apt:
+            name: ['gcc', 'g++', 'autoconf', 'bzr', 'python-dev']
+                 
+     - name: Add universe repository
+       become: yes
+       apt_repository:
+            repo: deb http://archive.ubuntu.com/ubuntu/ {{ansible_distribution_release}} universe
+     
+     - name: Install insterfaces tools
+       become: yes
+       apt:
+            name: ['bridge-utils', 'uml-utilities']
+
+     - name: Add Docker GPG key
+       become: yes
+       apt_key: url=https://download.docker.com/linux/ubuntu/gpg
+
+     - name: Add Docker APT repository
+       become: yes
+       apt_repository:
+          repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ansible_distribution_release}} stable
+
+     - name: Install list of packages 
+       become: yes
+       apt:
+           name: ['apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common', 'docker-ce', 'python3-docker', 'bridge-utils', 'libnm-glib-dev', 'python-gi']
+           state: present
+           update_cache: yes
+       
+     - name: create docker group   
+       become: yes
+       group:
+           name: docker
+
+     - name: add user dockemu to group docker     
+       become: yes   
+       user:
+           name: dockemu
+           group: docker
+
+     - name: Remove useless packages from the cache  
+       become: yes
+       apt:
+          autoclean: yes
+
+     - name: Remove dependencies that are no longer required    
+       become: yes
+       apt:
+          autoremove: yes
+          
+     - name: Creates directory   
+       file:
+          path: "{{deployFolder}}"
+          state: directory
+          
+     - name: Download ns-3 allinone    
+       get_url:
+          url: "https://www.nsnam.org/release/{{nsVersion}}{{extension}}"
+          dest: "{{deployFolder}}/{{nsVersion}}{{extension}}"
+          
+     - name: Extract allinone ns3 bz2 in home dir    
+       unarchive:
+          src:  "{{deployFolder}}/{{nsVersion}}{{extension}}"
+          dest: "{{deployFolder}}"
+          remote_src: yes 
+
+     - name: Removing ns3 bz2 file
+       file:
+          path: "{{deployFolder}}/{{nsVersion}}{{extension}}"
+          state: absent
+
+     - name: ns3 set waf configure optimized mode     
+       command: ./waf -d optimized configure
+       args:
+           chdir: "{{deployFolder}}/{{nsVersion}}/{{nsCodeFolder}}"
+       when: optimized
+
+     - name: ns3 waf configure    
+       command: ./waf configure --disable-examples --disable-tests --disable-python --enable-static --no-task-lines
+       args:
+           chdir: "{{deployFolder}}/{{nsVersion}}/{{nsCodeFolder}}"
+       when: not optimized
+
+     - name: execute ./waf to build ns3    
+       command: ./waf  
+       args:
+           chdir: "{{ deployFolder }}/{{ nsVersion }}/{{ nsCodeFolder }}"
+
+     # I didn't manage to get NS3 running directly from systemd script, this scriptis just used from systemd  
+     - name: create launch NS3 script
+       tags: 
+             - install  
+       template:
+           src: templates/launch_ns3.j2
+           dest: "{{ deployFolder }}/{{ nsVersion }}/{{ nsCodeFolder }}/launch_ns3.sh"
+           owner: dockemu
+           #group: dockemu
+           mode: 0755
+    
+     - name: create init script to systemd
+       become: yes
+       template: 
+           src: templates/ns3.service.j2
+           dest: /etc/systemd/system/ns3.service
+           mode: 0755 

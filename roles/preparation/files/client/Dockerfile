@@ -27,7 +27,9 @@ RUN ./autogen.sh --clean && ./autogen.sh \
 
 FROM alpine:latest
 COPY --from=builder /tmp/coap-* /libcoap/
-CMD /libcoap/coap-client -m get -s 60 -T cafe coap://server.dockemu.me/time > /var/log/dockemu/coap-server.log
+#CMD sleep $(( $RANDOM % 10 )) && /libcoap/coap-client -m get -s 600 -T cafe coap://server-0-dockemu/time > /var/log/dockemu/coap-server.log
+CMD sleep 60 \
+    && /libcoap/coap-client -m get -s 600 -T cafe coap://server-0-dockemu/time > /var/log/dockemu/coap-client.log
 EXPOSE 5684
 
 STOPSIGNAL SIGTERM

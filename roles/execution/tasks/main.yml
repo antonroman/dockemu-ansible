@@ -1,0 +1,340 @@
+---
+  # RUNNING CLIENT AND SERVER CONTAINERS    
+     - name: run server docker containers first 
+       docker_container:
+            name: "{{ baseContainerName }}-server-{{ item }}"
+            image: "{{ baseContainerName }}_server"
+            state: started
+            detach: yes
+            interactive: yes
+            purge_networks: yes
+            tty: yes
+            hostname: "server-{{ item }}-dockemu"
+            volumes:
+                 - "{{ deployFolder }}/{{ experimentName }}/logs/{{ baseContainerName }}-server-{{ item }}:/var/log/dockemu"
+            privileged: yes
+            sysctls:
+                 net.ipv6.conf.all.disable_ipv6: 0
+       with_sequence: "start=0 count={{ numberOfServerNodes }}"
+
+     - name: run client docker containers after server containers
+       docker_container:
+            name: "{{ baseContainerName }}-client-{{ item }}"
+            image: "{{ baseContainerName }}_client"
+            state: started
+            detach: yes
+            interactive: yes
+            purge_networks: yes
+            tty: yes
+            hostname: "client-{{ item }}-dockemu"
+            volumes:
+                 - "{{ deployFolder }}/{{ experimentName }}/logs/{{ baseContainerName }}-{{ item }}:/var/log/dockemu"
+            privileged: yes
+            sysctls:
+                 net.ipv6.conf.all.disable_ipv6: 0
+            etc_hosts:
+                 server-0-dockemu: 10.12.0.240
+                 server-1-dockemu: 10.12.0.241
+                 server-2-dockemu: 10.12.0.242
+                 server-3-dockemu: 10.12.0.243
+                 server-4-dockemu: 10.12.0.244
+                 server-5-dockemu: 10.12.0.245
+                 server-6-dockemu: 10.12.0.246
+                 server-7-dockemu: 10.12.0.247
+                 server-8-dockemu: 10.12.0.248
+                 server-9-dockemu: 10.12.0.249
+                 server-10-dockemu: 10.12.0.250
+                 server-11-dockemu: 10.12.0.251
+                 server-12-dockemu: 10.12.0.252
+                 server-13-dockemu: 10.12.0.253
+                 server-14-dockemu: 10.12.0.254
+       with_sequence: "start=0 count={{ numberOfClientNodes }}"
+
+  # GET LIST OF CLIENT CONTAINERS AND LIST OF PIDS  
+     - name: gather list of client containers
+       tags:
+            - testing
+            - destroy   
+       shell: "docker ps | awk '/{{ item }}/{print $1}'"
+       register: output_list_of_client_containers
+       with_items:
+             - "{{ baseContainerName }}_client"
+   
+     - name: get list of lines in a single string in the first element of the string
+       tags:
+             - testing  
+             - destroy
+       set_fact: 
+             string_list_of_client_containers: "{{output_list_of_client_containers.results|map(attribute='stdout')|list}}"
+   
+     - name: convert list with pids into list to be used later in with_items
+       tags:
+             - testing
+             - destroy
+       set_fact:
+             list_of_client_containers: "{{string_list_of_client_containers[0].split('\n')}}"
+
+   
+     - name: get PID from client containers 
+       tags:
+             - testing
+             - destroy  
+       shell:  "docker inspect --format '{''{ .State.Pid }''}' {{ item }}"
+       register: list_client_container_pids       
+       with_items:
+            - "{{ list_of_client_containers }}"
+
+     # - debug: 
+     #      msg: "list client {{ item.0 }} with PID {{ item.1 }}"
+     #   with_indexed_items:
+     #        - "{{list_client_container_pids.results|map(attribute='stdout')|list}}"
+     #   tags:
+     #        - testing
+
+    # GET LIST OF SERVER CONTAINERS AND THEN LIST OF PIDS  
+     - name: gather list of server containers
+       tags:
+            - testing
+            - destroy   
+       shell: "docker ps | awk '/{{ item }}/{print $1}'"
+       register: output_list_of_server_containers
+       with_items:
+             - "{{ baseContainerName }}_server"
+   
+     - name: get list of lines in a single string in the first element of the string
+       tags:
+             - testing
+             - destroy
+       set_fact: 
+             string_list_of_server_containers: "{{output_list_of_server_containers.results|map(attribute='stdout')|list}}"
+   
+     - name: convert list with pids into list to be used later in with_items
+       tags:
+             - testing
+             - destroy
+       set_fact:
+             list_of_server_containers: "{{string_list_of_server_containers[0].split('\n')}}"
+     
+     - name: get PID from server containers 
+       tags:
+             - testing
+             - destroy  
+       shell:  "docker inspect --format '{''{ .State.Pid }''}' {{ item }}"
+       register: list_server_container_pids       
+       with_items:
+            - "{{ list_of_server_containers }}"
+
+    # MAKE THE NETWORK SPACE OF EACH DOCKER CONTAINER PUBLIC
+     - name: Creates /var/run/netns folder 
+       become: yes
+       file:
+           path: /var/run/netns
+           state: directory
+      
+     - name: Create symbolic link to client and server container network namespace 
+       file:
+           src: "/proc/{{ item }}/ns/net"
+           dest: "/var/run/netns/{{ item }}"
+           state: link
+       become: yes    
+       with_items:
+             - "{{list_client_container_pids.results|map(attribute='stdout')|list}}"
+             - "{{list_server_container_pids.results|map(attribute='stdout')|list}}"
+
+
+       #NETWORKING FOR CLIENT CONTAINERS
+       # Important: interface name must not exceed 15 chars!!
+     - name: create client tap interfaces with numeric name
+       command:  "ip tuntap add mode tap tap-c-{{ item.0 }}"
+       become: yes
+       with_indexed_items:
+           - "{{list_client_container_pids.results|map(attribute='stdout')|list}}"
+
+     - name: set up in promisc mode client tap interfaces with numeric name
+       command:  "ifconfig tap-c-{{ item.0 }} 0.0.0.0 promisc up"
+       become: yes
+       with_indexed_items:
+           - "{{list_client_container_pids.results|map(attribute='stdout')|list}}"
+
+     - name: create client bridge interfaces
+       command:  "ip link add br-c-{{ item.0 }} type bridge"  
+       become: yes
+       with_indexed_items:
+             - "{{list_client_container_pids.results|map(attribute='stdout')|list}}"
+
+     - name: set up bridge interfaces
+       command: "ip link set br-c-{{ item.0 }} up"  
+       become: yes
+       with_indexed_items:
+             - "{{list_client_container_pids.results|map(attribute='stdout')|list}}"
+
+     - name: add tap client interface to bridge interfaces
+       command: "ip link set tap-c-{{ item.0 }} master br-c-{{ item.0 }}"
+       become: yes
+       with_indexed_items:
+             - "{{list_client_container_pids.results|map(attribute='stdout')|list}}"
+
+
+       #NETWORKING FOR SERVER CONTAINERS
+       # Important: interface name must not exceed 15 chars!!
+     - name: create server tap interfaces with numeric name
+       command:  "ip tuntap add mode tap tap-s-{{ item.0 }}"
+       become: yes
+       with_indexed_items:
+           - "{{list_server_container_pids.results|map(attribute='stdout')|list}}"
+
+     - name: set up in promisc mode server tap interfaces with numeric name
+       command:  "ifconfig tap-s-{{ item.0 }} 0.0.0.0 promisc up"
+       become: yes
+       with_indexed_items:
+           - "{{list_server_container_pids.results|map(attribute='stdout')|list}}"
+
+     - name: create server bridge interfaces
+       command:  "ip link add br-s-{{ item.0 }} type bridge"  
+       become: yes
+       with_indexed_items:
+             - "{{list_server_container_pids.results|map(attribute='stdout')|list}}"
+
+     - name: set up server bridge interfaces
+       command: "ip link set br-s-{{ item.0 }} up"  
+       become: yes
+       with_indexed_items:
+             - "{{list_server_container_pids.results|map(attribute='stdout')|list}}"
+
+     - name: add tap server interface to bridge interfaces
+       command: "ip link set tap-s-{{ item.0 }} master br-s-{{ item.0 }}"
+       become: yes
+       with_indexed_items:
+             - "{{list_server_container_pids.results|map(attribute='stdout')|list}}"
+   
+
+      # CREATE INTERNAL AND EXTERNAL INTERFACES FOR CLIENT CONTAINERS AND LINK TO BRIDGE AND NET NAMESPACE
+     - name: create a pair of virtual peer interfaces for client containers
+       command: "ip link add c-e-{{ baseContainerName }}-{{ item.0 }} type veth peer name c-i-{{ baseContainerName }}-{{ item.0 }}"
+       become: yes        
+       with_indexed_items:
+            - "{{list_client_container_pids.results|map(attribute='stdout')|list}}" 
+
+     - name: set client external container interfaces up
+       become: yes
+       command: "ip link set c-e-{{ baseContainerName }}-{{ item.0 }} up"
+       with_indexed_items:
+            - "{{list_client_container_pids.results|map(attribute='stdout')|list}}" 
+
+     # - name: set client internal container interfaces up
+     #   become: yes
+     #   command: "ip link set c-i-{{ baseContainerName }}-{{ item.0 }} up"
+     #   with_indexed_items:
+     #        - "{{list_client_container_pids.results|map(attribute='stdout')|list}}"        
+               
+     - name: add client external interface to the bridge 
+       become: yes
+       command: "ip link set c-e-{{ baseContainerName }}-{{ item.0 }} master br-c-{{ item.0 }}"
+       with_indexed_items:
+            - "{{list_client_container_pids.results|map(attribute='stdout')|list}}" 
+    
+     - name: attach internal interface to the network space of client container 
+       become: yes
+       command: "ip link set c-i-{{ baseContainerName }}-{{ item.0 }} netns {{ item.1 }}"
+       with_indexed_items:
+            - "{{list_client_container_pids.results|map(attribute='stdout')|list}}" 
+ 
+     - name: modify name of internal interface attached to container network namespace 
+       become: yes
+       command: "ip netns exec {{ item.1 }} ip link set dev c-i-{{ baseContainerName }}-{{ item.0 }} name eth0"
+       with_indexed_items:
+            - "{{list_client_container_pids.results|map(attribute='stdout')|list}}" 
+       
+     - name: change MAC eth0 interface of client container network namespace 
+       become: yes
+       command: "ip netns exec {{ item.1 }} ip link set eth0 address {{ '12:34' | random_mac }}"
+       with_indexed_items:
+            - "{{list_client_container_pids.results|map(attribute='stdout')|list}}" 
+
+     - name: set eth0 interface of client container network namespace up
+       become: yes
+       command: "ip netns exec {{ item.1 }} ip link set eth0 up"
+       with_indexed_items:
+            - "{{list_client_container_pids.results|map(attribute='stdout')|list}}"       
+
+     - name: set IPv4 of eth0 interface of client container network namespace
+       become: yes
+       command: "ip netns exec {{ item.1 }} ip addr add 10.12.{{item.0 % 255}}.{{ (item.0 + 1) % 254}}/16 dev eth0"
+       with_indexed_items:
+            - "{{list_client_container_pids.results|map(attribute='stdout')|list}}"    
+
+     - name: set IPv6 of eth0 interface of client container network namespace
+       become: yes
+       command: "ip netns exec {{ item.1 }} ip -6 addr add 2001:777:1::{{item.0 % 255}}:{{ (item.0 + 1) % 254}}/64 dev eth0"
+       with_indexed_items:
+            - "{{list_client_container_pids.results|map(attribute='stdout')|list}}"    
+
+
+   # CREATE INTERNAL AND EXTERNAL INTERFACES FOR SERVER CONTAINERS AND LINK TO BRIDGE AND NET NAMESPACE
+     - name: create a pair of virtual peer interfaces for server containers
+       command: "ip link add s-e-{{ baseContainerName }}-{{ item.0 }} type veth peer name s-i-{{ baseContainerName }}-{{ item.0 }}"
+       become: yes        
+       with_indexed_items:
+            - "{{list_server_container_pids.results|map(attribute='stdout')|list}}" 
+
+     - name: set server external container interfaces up
+       become: yes
+       command: "ip link set s-e-{{ baseContainerName }}-{{ item.0 }} up"
+       with_indexed_items:
+            - "{{list_server_container_pids.results|map(attribute='stdout')|list}}" 
+
+     # - name: set server internal container interfaces up
+     #   become: yes
+     #   command: "ip link set s-i-{{ baseContainerName }}-{{ item.0 }} up"
+     #   with_indexed_items:
+     #        - "{{list_server_container_pids.results|map(attribute='stdout')|list}}"              
+               
+     - name: add server external interface to the bridge 
+       become: yes
+       command: "ip link set s-e-{{ baseContainerName }}-{{ item.0 }} master br-s-{{ item.0 }}"
+       with_indexed_items:
+            - "{{list_server_container_pids.results|map(attribute='stdout')|list}}" 
+    
+     - name: attach internal interface to the network space of server container 
+       become: yes
+       command: "ip link set s-i-{{ baseContainerName }}-{{ item.0 }} netns {{ item.1 }}"
+       with_indexed_items:
+            - "{{list_server_container_pids.results|map(attribute='stdout')|list}}" 
+ 
+     - name: modify name of internal interface attached to container network namespace 
+       become: yes
+       command: "ip netns exec {{ item.1 }} ip link set dev s-i-{{ baseContainerName }}-{{ item.0 }} name eth0"
+       with_indexed_items:
+            - "{{list_server_container_pids.results|map(attribute='stdout')|list}}" 
+       
+     - name: change MAC eth0 interface of server container network namespace 
+       become: yes
+       command: "ip netns exec {{ item.1 }} ip link set eth0 address {{ '12:34' | random_mac }}"
+       with_indexed_items:
+            - "{{list_server_container_pids.results|map(attribute='stdout')|list}}" 
+
+     - name: set eth0 interface of server container network namespace up
+       become: yes
+       command: "ip netns exec {{ item.1 }} ip link set eth0 up"
+       with_indexed_items:
+            - "{{list_server_container_pids.results|map(attribute='stdout')|list}}"       
+
+     - name: set IPv4 of eth0 interface of server container network namespace
+       become: yes
+       command: "ip netns exec {{ item.1 }} ip addr add 10.12.{{item.0 % 255}}.{{ (item.0 + 240) % 254}}/16 dev eth0"
+       with_indexed_items:
+            - "{{list_server_container_pids.results|map(attribute='stdout')|list}}"    
+
+     - name: set IPv6 of eth0 interface of server container network namespace
+       become: yes
+       command: "ip netns exec {{ item.1 }} ip -6 addr add 2001:777:1::{{item.0 % 255}}:{{ (item.0 + 240) % 254}}/64 dev eth0"
+       with_indexed_items:
+            - "{{list_server_container_pids.results|map(attribute='stdout')|list}}"    
+
+     #START ns3 NETWORK SIMULATOR
+     - name: Execute NS3 simulator
+       become: yes
+       systemd:
+               state: started
+               daemon_reload: yes
+               name: ns3  

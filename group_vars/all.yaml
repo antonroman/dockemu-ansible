@@ -6,19 +6,22 @@
     deployFolder: /home/dockemu/src/dockemu
     optimized: false
     # ANTON cambia isto kona! 
-    confFile: /home/dockemu/src/dockemu/NS3DockerEmulator/conf
+    #confFile: /home/dockemu/src/dockemu/NS3DockerEmulator/conf
 
-      # experiment configuration  
-    baseContainerName: coapcontainer
-    experimentName: golang-nodes
+      # experiment configuration
+      # base container name should not contain non-alfanumeric chars 
+      # max 8 chars 
+    baseContainerName: coapcont
+    experimentName: coap-experiment
     logsDirectory: /var/dockemu/logs/
     numberOfClientNodes: 5
     numberOfServerNodes: 1
     serverNode: True
-    emulationTime: 300
-    ns3NetworkScript: tap-wifi-virtual-machine
+    emulationTime: 3000
+    ns3NetworkScript: tap-csma-virtual-machine-client-server
     nodeSpeed: 5
     nodePause: 1
+    ns3NetworkParameteres: --ns3::CsmaChannel::DataRate=100000000 
 
     
       # emulation parameters  

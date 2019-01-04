@@ -1,0 +1,64 @@
+---
+# DELETE LOG FOLDERS
+     - name: Delete log folders for each client node
+       file:
+            path: "{{ deployFolder }}/{{ experimentName }}/logs/{{ baseContainerName }}-{{ item }}"
+            state: absent
+       with_sequence: "start=0 count={{ numberOfClientNodes }}"
+
+     - name: Delete log folders for each server node
+       file:
+           path: "{{ deployFolder }}/{{ experimentName }}/logs/{{ baseContainerName }}-server-{{ item }}"
+           state: absent
+       with_sequence: "start=0 count={{ numberOfServerNodes }}"
+
+# STOP AND REMOVE docker_container
+     - name: stop and remove client docker containers
+       docker_container:
+            name: "{{ baseContainerName }}-client-{{ item }}"
+            image: "{{ baseContainerName }}_client"
+            state: absent
+       with_sequence: "start=0 count={{ numberOfClientNodes }}"
+
+     - name: stop and remove server docker containers
+       docker_container:
+            name: "{{ baseContainerName }}-server-{{ item }}"
+            image: "{{ baseContainerName }}_server"
+            state: absent
+       with_sequence: "start=0 count={{ numberOfServerNodes }}"
+
+# REMOVE netns folder and content
+     - name: Creates /var/run/netns folder 
+       become: yes
+       file:
+           path: /var/run/netns
+           state: absent
+
+# STOP NS3
+     - name: Stop NS3 simulator 
+       become: yes
+       systemd:
+               state: stopped
+               name: ns3  
+
+# REMOVE bridge INTERFACES
+     - name: remove server bridge interfaces
+       command:  "ip link delete br-s-{{ item.0 }} type bridge"  
+       become: yes
+       with_sequence: "start=0 count={{ numberOfServerNodes }}"
+
+     - name: remove client bridge interfaces
+       command:  "ip link delete br-c-{{ item.0 }} type bridge"  
+       become: yes
+       with_sequence: "start=0 count={{ numberOfClientNodes }}"
+
+# REMOVE tap INTERFACES
+     - name: remove server tap interfaces
+       command:  "ip link delete tap-s-{{ item.0 }} type bridge"  
+       become: yes
+       with_sequence: "start=0 count={{ numberOfServerNodes }}"
+
+     - name: remove client tap interfaces
+       command:  "ip link delete tap-c-{{ item.0 }} type bridge"  
+       become: yes
+       with_sequence: "start=0 count={{ numberOfClientNodes }}"
