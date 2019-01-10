@@ -28,7 +28,7 @@
        with_sequence: "start=0 count={{ numberOfServerNodes }}"
 
 # REMOVE netns folder and content
-     - name: Creates /var/run/netns folder 
+     - name: Remove /var/run/netns folder 
        become: yes
        file:
            path: /var/run/netns

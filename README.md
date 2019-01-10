@@ -18,13 +18,21 @@ Dockemu uses Ansible to install all the required software, setup the simulation 
 1. Install Ansible
 2. Define where to install Dockemu. It can be in the same host which is running Ansible but it is recommended to use a clean server.
 3. Execute Ansible script with the *install* tag to install all the reuqired packages, ns3 and Docker:
-`ansible-playbook dockemu.yml -t install`
+```
+ansible-playbook dockemu.yml -t install
+```
 4. Execute the Ansible script with the *prepare* tag to prepare all the containers, log folders and network interfaces: 
-`ansible-playbook dockemu.yml -t prepare`
+```
+ansible-playbook dockemu.yml -t prepare
+```
 5. To perform the simulation itself call the Ansible script with the *execute* tag: 
-`ansible-playbook dockemu.yml -t execute`
+```
+ansible-playbook dockemu.yml -t execute
+```
 6. To clean the environment after the simulation use the *cleanup* tag:
-`ansible-playbook dockemu.yml -t cleanup`
+```
+ansible-playbook dockemu.yml -t cleanup
+```
 
 Please note that if the playbook is executed without tags then the cleanup role will be the last one to be executed and it will destroy the simulation and its results. 
 
@@ -55,5 +63,24 @@ The IPv4 addresses of the `eth0` interfaces of server and client containers are 
 
 ### IPv6
 The IPv6 addresses of the `eth0` interfaces of server and client containers are automatically assigned by Dockemu within the ranges:
-- the address space 10.12.[0-239].1/16 is for clients. It is assigned one 10.12.[0-239].1/24 network to each client container. The IPs within its network container range as supossed to be internal to the containers. 
-- the address space 10.12.[240-255].1/16 is for servers. It is assigned one 10.12.[240-255].1/24 network to each server container.
+- the address space 2001:777:1::[0-239].1/64 is for clients. 
+- the address space 2001:777:1::[240-255].1/64 is for servers.
+
+## How to execute command withint each container
+
+It is possible to execute commands directly within the container. To do that you need to check the *container id* with the command:
+
+```
+dockemu@dockemu-1:~$ sudo docker container ps -a
+```
+
+And then you will be able to execute any command in the container:
+
+```
+dockemu@dockemu-1:~$ sudo docker exec -it 1f155a6575bd ping 10.12.0.240
+```
+
+For example, if you want to check the IPs assigned to each container you execute:
+
+```
+dockemu@dockemu-1:~$ sudo docker exec -it 1f155a6575bd ifconfig
