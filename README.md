@@ -6,16 +6,16 @@ By default it will execute a CoAP environment with a configurable number of clie
 The current version supports up to 240 clients and 16 server instances. Please note that the max number of instances will depend on the resources of the server hosting the Dockemu framework. 
 
 ## Requirements
-Dockemu uses Ansible to install all the required software, setup the simulation scenario and launch the simulation itself. It is recommended to execute Ansible host different from the one where Dockemu (ns3 + Docker containers) is going to run. However, nothing prevents from run Ansible from the same host where Dockemu is going to be executed.
+Dockemu uses Ansible to install all the required software, setup the simulation scenario and launch the simulation itself. It is recommended to execute Ansible from a host different from the one where Dockemu (ns3 + Docker containers) is going to run. However, nothing prevents you from executing the Ansible playbook from the same host where Dockemu is going to be deployed.
 
 ### Requirements of Ansible host
 1. **Ansible**: version 2.7 or higher
 
 ### Requeriments Dockemu host
-1. **OS**: Ubuntu 18.04 or higher (it is very likely to be compatible with lower versions and other linux but it has not been tested)
+1. **OS**: Ubuntu 18.04 or higher (it is very likely to be compatible with lower versions and other linux distributions but it has not been tested yet).
 
 ## How to execute
-1. Install Ansible
+1. Install Ansible (version >=2.7)
 2. Define where to install Dockemu. It can be in the same host which is running Ansible but it is recommended to use a clean server.
 3. Execute Ansible script with the *install* tag to install all the reuqired packages, ns3 and Docker:
 ```
