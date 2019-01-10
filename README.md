@@ -66,7 +66,7 @@ The IPv6 addresses of the `eth0` interfaces of server and client containers are 
 - the address space 2001:777:1::[0-239].1/64 is for clients. 
 - the address space 2001:777:1::[240-255].1/64 is for servers.
 
-## How to execute command withint each container
+## How to execute command withint a container
 
 It is possible to execute commands directly within the container. To do that you need to check the *container id* with the command:
 
