@@ -207,6 +207,11 @@
        with_indexed_items:
              - "{{list_server_container_pids.results|map(attribute='stdout')|list}}"
    
+     - name: remove all netfilter rules
+       shell: for f in bridge-nf-*; do echo 0 > $f; done
+       args:
+           chdir: /proc/sys/net/bridge
+       become: yes
 
       # CREATE INTERNAL AND EXTERNAL INTERFACES FOR CLIENT CONTAINERS AND LINK TO BRIDGE AND NET NAMESPACE
      - name: create a pair of virtual peer interfaces for client containers
@@ -259,7 +264,8 @@
 
      - name: set IPv4 of eth0 interface of client container network namespace
        become: yes
-       command: "ip netns exec {{ item.1 }} ip addr add 10.12.{{item.0 % 255}}.{{ (item.0 + 1) % 254}}/16 dev eth0"
+       #command: "ip netns exec {{ item.1 }} ip addr add 10.12.{{item.0 % 255}}.{{ (item.0 + 1) % 254}}/16 dev eth0"
+       command: "ip netns exec {{ item.1 }} ip addr add 10.12.0.{{ (item.0 + 1) % 254}}/16 dev eth0"
        with_indexed_items:
             - "{{list_client_container_pids.results|map(attribute='stdout')|list}}"    
 
