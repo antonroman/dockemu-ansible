@@ -106,11 +106,8 @@ main (int argc, char *argv[])
   // the right side.
   //
   NS_LOG_UNCOND ("Creating nodes");
-  NodeContainer clientNodes;
-  NodeContainer serverNodes;
-  clientNodes.Create (NumClientNodes);
-  serverNodes.Create (NumServerNodes);
-
+  NodeContainer nodes;
+  nodes.Create (NumClientNodes + NumServerNodes);
 
   //
   // Use a CsmaHelper to get a CSMA channel created, and the needed net 
@@ -120,9 +117,7 @@ main (int argc, char *argv[])
   // ./waf --run "tap=csma-virtual-machine --ns3::CsmaChannel::DataRate=10000000"
   //
   CsmaHelper csma;
-  NetDeviceContainer clientDevices = csma.Install (clientNodes);
-  NetDeviceContainer serverDevices = csma.Install (serverNodes);
-
+  NetDeviceContainer devices = csma.Install (nodes);
 
   //
   // Use the TapBridgeHelper to connect to the pre-configured tap devices for 
@@ -142,17 +137,17 @@ main (int argc, char *argv[])
         NS_LOG_UNCOND ("Tap bridge = " + tapName.str ());
 
         tapBridge.SetAttribute ("DeviceName", StringValue (tapName.str ()));
-        tapBridge.Install (clientNodes.Get (i), clientDevices.Get (i));
+        tapBridge.Install (nodes.Get (i), devices.Get (i));
     }
 
-  for (int i = 0; i < NumServerNodes; i++)
+  for (int i = 0; i <  NumServerNodes; i++)
     {
         std::stringstream tapName;
         tapName << "tap-s-" << i;
         NS_LOG_UNCOND ("Tap bridge = " + tapName.str ());
 
         tapBridge.SetAttribute ("DeviceName", StringValue (tapName.str ()));
-        tapBridge.Install (serverNodes.Get (i), serverDevices.Get (i));
+        tapBridge.Install (nodes.Get (i + NumClientNodes), devices.Get (i + NumClientNodes));
     }
 
   // if( AnimationOn )
