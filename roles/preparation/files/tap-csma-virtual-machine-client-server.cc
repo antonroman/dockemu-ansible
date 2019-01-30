@@ -80,13 +80,10 @@ main (int argc, char *argv[])
   int NumServerNodes = 1;
   double TotalTime = 600.0;
 
-  std::string TapBaseName = "emu";
-
   CommandLine cmd;
   cmd.AddValue ("NumClientNodes", "Number of client nodes/devices", NumClientNodes);
   cmd.AddValue ("NumServerNodes", "Number of server nodes/devices", NumServerNodes);
   cmd.AddValue ("TotalTime", "Total simulation time", TotalTime);
-  cmd.AddValue ("TapBaseName", "Base name for tap interfaces", TapBaseName);
   cmd.AddValue ("AnimationOn", "Enable animation", AnimationOn);
 
   cmd.Parse (argc,argv);

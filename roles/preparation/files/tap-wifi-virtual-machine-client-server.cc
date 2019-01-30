@@ -118,13 +118,10 @@ main (int argc, char *argv[])
   double scenarioSizeX = 300.0;
   double scenarioSizeY = 300.0;
 
-  std::string TapBaseName = "emu";
-
   CommandLine cmd;
   cmd.AddValue ("NumClientNodes", "Number of client nodes/devices", NumClientNodes);
   cmd.AddValue ("NumServerNodes", "Number of server nodes/devices", NumServerNodes);
   cmd.AddValue ("TotalTime", "Total simulation time", TotalTime);
-  cmd.AddValue ("TapBaseName", "Base name for tap interfaces", TapBaseName);
   cmd.AddValue ("GridRowSize", "Grid row size", gridRowSize);
   cmd.AddValue ("GridDistance", "Grid distance", distance);
   cmd.AddValue ("SizeX", "Scenario Size in X axis", scenarioSizeX);
@@ -158,11 +155,8 @@ main (int argc, char *argv[])
   // Create NumNodes ghost nodes.
   //
 //  NS_LOG_UNCOND ("Creating nodes");
-  NodeContainer clientNodes;
-  clientNodes.Create (NumClientNodes);
-
-  NodeContainer serverNodes;
-  serverNodes.Create (NumServerNodes);
+  NodeContainer nodes;
+  nodes.Create (NumClientNodes + NumServerNodes);
 
   //
   // We're going to use 802.11 A so set up a wifi helper to reflect that.
@@ -190,8 +184,7 @@ main (int argc, char *argv[])
   //
   // Install the wireless devices onto our ghost nodes.
   //
-  NetDeviceContainer clientDevices = wifi.Install (wifiPhy, wifiMac, clientNodes);
-  NetDeviceContainer serverDevices = wifi.Install (wifiPhy, wifiMac, serverNodes);
+  NetDeviceContainer devices = wifi.Install (wifiPhy, wifiMac, nodes);
 
   //
   // We need location information since we are talking about wifi, so add a
@@ -269,9 +262,7 @@ main (int argc, char *argv[])
   // ++++++++++++++++++++++++++++++++++++
 
   mobility.SetPositionAllocator (taPositionAlloc);
-  mobility.Install (clientNodes);
-  mobility.Install (serverNodes);
-
+  mobility.Install (nodes);
 
   //
   // Use the TapBridgeHelper to connect to the pre-configured tap devices for
@@ -288,23 +279,22 @@ main (int argc, char *argv[])
   for (int i = 0; i < NumClientNodes; i++)
     {
         std::stringstream tapName;
-        // tapName << "tap-c-" << TapBaseName << (i+1) ;
         tapName << "tap-c-" << i ;
         // NS_LOG_UNCOND ("Tap bridge = " + tapName.str ());
 
         tapBridge.SetAttribute ("DeviceName", StringValue (tapName.str ()));
-        tapBridge.Install (clientNodes.Get (i), clientDevices.Get (i));
+        tapBridge.Install (nodes.Get (i), devices.Get (i));
     }
 
-  for (int i = 0; i < NumServerNodes; i++)
+  for (int i = NumClientNodes ; i < NumClientNodes + NumServerNodes; i++)
     {
         std::stringstream tapName;
         // tapName << "tap-s-" << TapBaseName << (i+1) ;
-        tapName << "tap-s-" << i ;
+        tapName << "tap-s-" << (i - NumClientNodes);
         // NS_LOG_UNCOND ("Tap bridge = " + tapName.str ());
 
         tapBridge.SetAttribute ("DeviceName", StringValue (tapName.str ()));
-        tapBridge.Install (serverNodes.Get (i), serverDevices.Get (i));
+        tapBridge.Install (nodes.Get (i), devices.Get (i));
     }
 
 

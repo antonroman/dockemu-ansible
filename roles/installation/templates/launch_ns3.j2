@@ -1,2 +1,2 @@
 #!/bin/sh
-/home/dockemu/src/dockemu/{{ nsVersion }}/{{ nsCodeFolder }}/waf -j {{ ns3Jobs }} --run "scratch/{{ ns3NetworkScript }} --NumClientNodes={{ numberOfClientNodes }} --NumServerNodes={{ numberOfServerNodes }} --TotalTime={{ emulationTime }} --TapBaseName=emu"
+/home/dockemu/src/dockemu/{{ nsVersion }}/{{ nsCodeFolder }}/waf -j {{ ns3Jobs }} --run "scratch/{{ ns3NetworkScript }} --NumClientNodes={{ numberOfClientNodes }} --NumServerNodes={{ numberOfServerNodes }} --TotalTime={{ emulationTime }} {{ns3NetworkParameters}}"

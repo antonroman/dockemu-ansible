@@ -208,7 +208,7 @@
              - "{{list_server_container_pids.results|map(attribute='stdout')|list}}"
    
      - name: remove all netfilter rules
-       shell: for f in bridge-nf-*; do echo 0 > $f; done
+       shell: for f in bridge-nf-*; do echo 0 > $f; done 
        args:
            chdir: /proc/sys/net/bridge
        become: yes
@@ -271,7 +271,8 @@
 
      - name: set IPv6 of eth0 interface of client container network namespace
        become: yes
-       command: "ip netns exec {{ item.1 }} ip -6 addr add 2001:777:1::{{item.0 % 255}}:{{ (item.0 + 1) % 254}}/64 dev eth0"
+       #command: "ip netns exec {{ item.1 }} ip -6 addr add fdf8:777:1::{{item.0 % 255}}:{{ (item.0 + 1) % 254}}/64 dev eth0"
+       command: "ip netns exec {{ item.1 }} ip -6 addr add fdf8:777:1::{{ (item.0 + 1) % 254}}/64 dev eth0"
        with_indexed_items:
             - "{{list_client_container_pids.results|map(attribute='stdout')|list}}"    
 
@@ -333,7 +334,7 @@
 
      - name: set IPv6 of eth0 interface of server container network namespace
        become: yes
-       command: "ip netns exec {{ item.1 }} ip -6 addr add 2001:777:1::{{item.0 % 255}}:{{ (item.0 + 240) % 254}}/64 dev eth0"
+       command: "ip netns exec {{ item.1 }} ip -6 addr add fdf8:777:1::{{ (item.0 + 240) % 254}}/64 dev eth0"
        with_indexed_items:
             - "{{list_server_container_pids.results|map(attribute='stdout')|list}}"    
 

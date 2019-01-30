@@ -5,8 +5,6 @@
     extension: .tar.bz2
     deployFolder: /home/dockemu/src/dockemu
     optimized: false
-    # ANTON cambia isto kona! 
-    #confFile: /home/dockemu/src/dockemu/NS3DockerEmulator/conf
 
       # experiment configuration
       # base container name should not contain non-alfanumeric chars 
@@ -14,16 +12,16 @@
     baseContainerName: coapcont
     experimentName: coap-experiment
     logsDirectory: /var/dockemu/logs/
-    numberOfClientNodes: 5
+    numberOfClientNodes: 5 
     numberOfServerNodes: 1
     serverNode: True
     emulationTime: 3000
     ns3NetworkScript: tap-csma-virtual-machine-client-server
+    #ns3NetworkScript: tap-wifi-virtual-machine-client-server
     nodeSpeed: 5
     nodePause: 1
-    ns3NetworkParameteres: --ns3::CsmaChannel::DataRate=100000000 
-
-    
+    ns3NetworkParameters: --ns3::CsmaChannel::DataRate=100000000 
+ 
       # emulation parameters  
     startns3: False
     ns3Jobs: 1
