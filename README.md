@@ -9,7 +9,7 @@ The current version supports up to 240 clients and 16 server instances. Please n
 Dockemu uses Ansible to install all the required software, setup the simulation scenario and launch the simulation itself. It is recommended to execute Ansible from a host different from the one where Dockemu (ns3 + Docker containers) is going to run. However, nothing prevents you from executing the Ansible playbook from the same host where Dockemu is going to be deployed.
 
 ### Requirements of Ansible host
-1. **Ansible**: version 2.7 or higher
+1. **Ansible**: version 2.7 or higher (recommended)
 
 ### Requeriments Dockemu host
 1. **OS**: Ubuntu 18.04 or higher (it is very likely to be compatible with lower versions and other linux distributions but it has not been tested yet).
