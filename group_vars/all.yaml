@@ -18,6 +18,7 @@
     emulationTime: 3000
     ns3NetworkScript: tap-csma-virtual-machine-client-server
     #ns3NetworkScript: tap-wifi-virtual-machine-client-server
+    tracesEnabled: false
     nodeSpeed: 5
     nodePause: 1
     ns3NetworkParameters: --ns3::CsmaChannel::DataRate=100000000 
