@@ -33,7 +33,7 @@
      - name: Install list of packages 
        become: yes
        apt:
-           name: ['apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common', 'docker-ce', 'python3-docker', 'bridge-utils', 'libnm-glib-dev', 'python-gi']
+           name: ['apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common', 'docker-ce', 'python3-docker', 'bridge-utils', 'python-gi', 'net-tools']
            state: present
            update_cache: yes
        
