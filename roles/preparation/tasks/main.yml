@@ -1,4 +1,15 @@
 ---
+     # I didn't manage to get NS3 running directly from systemd script, this scriptis just used from systemd
+     - name: create launch NS3 script
+       tags:
+             - install
+       template:
+           src: templates/launch_ns3.j2
+           dest: "{{ deployFolder }}/{{ nsVersion }}/{{ nsCodeFolder }}/launch_ns3.sh"
+           owner: dockemu
+           #group: dockemu
+           mode: 0755
+
  # COPY Dockerfiles AND BUILD IMAGES
      - name: Copy Dockerfile for client nodes  
        copy: "src=files/client/Dockerfile dest={{ deployFolder }}/client/"
