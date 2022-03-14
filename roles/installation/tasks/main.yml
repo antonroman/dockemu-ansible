@@ -96,17 +96,6 @@
        args:
            chdir: "{{ deployFolder }}/{{ nsVersion }}/{{ nsCodeFolder }}"
 
-     # I didn't manage to get NS3 running directly from systemd script, this scriptis just used from systemd  
-     - name: create launch NS3 script
-       tags: 
-             - install  
-       template:
-           src: templates/launch_ns3.j2
-           dest: "{{ deployFolder }}/{{ nsVersion }}/{{ nsCodeFolder }}/launch_ns3.sh"
-           owner: dockemu
-           #group: dockemu
-           mode: 0755
-    
      - name: create init script to systemd
        become: yes
        template: 
