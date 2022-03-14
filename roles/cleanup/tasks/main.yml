@@ -43,22 +43,22 @@
 
 # REMOVE bridge INTERFACES
      - name: remove server bridge interfaces
-       command:  "ip link delete br-s-{{ item.0 }} type bridge"  
+       command:  "ip link delete br-s-{{ item }} type bridge"
        become: yes
        with_sequence: "start=0 count={{ numberOfServerNodes }}"
 
      - name: remove client bridge interfaces
-       command:  "ip link delete br-c-{{ item.0 }} type bridge"  
+       command:  "ip link delete br-c-{{ item }} type bridge"
        become: yes
        with_sequence: "start=0 count={{ numberOfClientNodes }}"
 
 # REMOVE tap INTERFACES
      - name: remove server tap interfaces
-       command:  "ip link delete tap-s-{{ item.0 }} type bridge"  
+       command:  "ip link delete tap-s-{{ item }} type bridge"
        become: yes
        with_sequence: "start=0 count={{ numberOfServerNodes }}"
 
      - name: remove client tap interfaces
-       command:  "ip link delete tap-c-{{ item.0 }} type bridge"  
+       command:  "ip link delete tap-c-{{ item }} type bridge"
        become: yes
        with_sequence: "start=0 count={{ numberOfClientNodes }}"
