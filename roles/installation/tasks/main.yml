@@ -100,5 +100,5 @@
        become: yes
        template: 
            src: templates/ns3.service.j2
-           dest: /etc/systemd/system/ns3.service
-           mode: 0755 
+           dest: /usr/lib/systemd/system/ns3.service
+           mode: 0755
